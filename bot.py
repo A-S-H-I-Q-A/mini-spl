@@ -145,7 +145,7 @@ def handle_command(command):
     possible_moves = possible.split(",")
     board = parse_board(command["boardStatus"])
     player = command["player"]
-    _, best = minimax(board, depth=3, maximizing=True, player=player, legal_moves=possible_moves,
+    _, best = minimax(board, depth=10, maximizing=True, player=player, legal_moves=possible_moves,
                       alpha=float('-inf'), beta=float('inf'))
     return str(best) if best else "-1"
 
