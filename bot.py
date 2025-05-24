@@ -2,6 +2,7 @@ import socket
 import json
 import struct
 import copy
+import random
 
 HOST = '127.0.0.1'
 PORT = 2024
@@ -125,18 +126,41 @@ def minimax(board, depth, maximizing, player, legal_moves, alpha, beta):
                 break
         return max_eval, best_move
     else:
-        min_eval = float('inf')
+        # Don't assume opponent plays optimally - simulate more realistic opponent behavior
+        move_scores = []
         for move in legal_moves:
             new_board = simulate_move(board.copy(), int(move), get_opponent(player))
             my_moves = get_legal_moves(new_board, player)
             eval_score, _ = minimax(new_board, depth - 1, True, player, my_moves, alpha, beta)
-            if eval_score < min_eval:
-                min_eval = eval_score
-                best_move = move
-            beta = min(beta, eval_score)
-            if beta <= alpha:
-                break
-        return min_eval, best_move
+            move_scores.append((eval_score, move))
+        
+        # Sort moves by how good they are for the opponent (worst for us)
+        move_scores.sort()
+        
+        # Instead of always picking the best opponent move, use weighted selection
+        # Give higher probability to better opponent moves, but allow suboptimal choices
+        if len(move_scores) == 1:
+            return move_scores[0]
+        
+        # Create probability weights: best moves get higher weight, but others still possible
+        weights = []
+        for i in range(len(move_scores)):
+            # Exponential decay - best moves much more likely, but not guaranteed
+            weight = 2 ** (len(move_scores) - i - 1)
+            weights.append(weight)
+        
+        # Weighted random selection
+        total_weight = sum(weights)
+        rand_val = random.random() * total_weight
+        cumulative = 0
+        
+        for i, (score, move) in enumerate(move_scores):
+            cumulative += weights[i]
+            if rand_val <= cumulative:
+                return score, move
+        
+        # Fallback to best move if something goes wrong
+        return move_scores[0]
 
 def handle_command(command):
     possible = command.get("possibleMoves", "").strip()
@@ -145,7 +169,7 @@ def handle_command(command):
     possible_moves = possible.split(",")
     board = parse_board(command["boardStatus"])
     player = command["player"]
-    _, best = minimax(board, depth=10, maximizing=True, player=player, legal_moves=possible_moves,
+    _, best = minimax(board, depth=6, maximizing=True, player=player, legal_moves=possible_moves,
                       alpha=float('-inf'), beta=float('inf'))
     return str(best) if best else "-1"
 
