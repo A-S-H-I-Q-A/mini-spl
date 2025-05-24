@@ -71,10 +71,16 @@ def simulate_move(board, move, player):
 def evaluate_board(board, player):
     opponent = get_opponent(player)
     corners = [0, 7, 56, 63]
-    edges = [1, 2, 3, 4, 5, 6,
-             8, 16, 24, 32, 40, 48,
-             15, 23, 31, 39, 47, 55,
-             57, 58, 59, 60, 61, 62]
+    near_corners = {
+        0: [1, 8, 9],
+        7: [6, 14, 15],
+        56: [48, 49, 57],
+        63: [54, 55, 62]
+    }
+    edges = [i for i in range(64) if i in range(1, 7) or  # Top
+             i in range(8, 57, 8) or  # Left
+             i in range(15, 57, 8) or  # Right
+             i in range(57, 63)]  # Bottom
 
     empty_count = board.count('E')
     is_endgame = empty_count <= 16
@@ -85,34 +91,41 @@ def evaluate_board(board, player):
     opponent_pieces = 0
 
     for i in range(64):
-        if board[i] == player or board[i] == opponent:
-            current = board[i]
-            value = 1
-            if i in corners:
-                value += 40 if is_endgame else 30 if is_midgame else 20
-            elif i in edges:
-                value += 8 if is_endgame else 5 if is_midgame else 3
-            elif i in [1, 8, 9] and board[0] == current:
-                value += 4
-            elif i in [6, 14, 15] and board[7] == current:
-                value += 4
-            elif i in [48, 49, 57] and board[56] == current:
-                value += 4
-            elif i in [54, 55, 62] and board[63] == current:
-                value += 4
-            elif i in [1, 8, 9, 6, 14, 15, 48, 49, 57, 54, 55, 62]:
-                value -= 2 if not is_endgame else -1
+        current = board[i]
+        if current not in [player, opponent]:
+            continue
 
-            if current == player:
-                player_pieces += 1
-                score += value
-            else:
-                opponent_pieces += 1
-                score -= value
+        value = 1  # base value
+        if i in corners:
+            value += 100 if is_endgame else 80 if is_midgame else 60
+        elif i in edges:
+            value += 15 if is_endgame else 10 if is_midgame else 6
+        else:
+            value += 1
 
+        # Penalize near corners if corner is not controlled
+        for corner, neighbors in near_corners.items():
+            if i in neighbors and board[corner] != current:
+                value -= 10
+
+        if current == player:
+            player_pieces += 1
+            score += value
+        else:
+            opponent_pieces += 1
+            score -= value
+
+    # Add weight to piece count difference late game
     if is_endgame:
         score += (player_pieces - opponent_pieces) * 2
+
+    # Mobility bonus
+    player_moves = len(get_legal_moves(board, player))
+    opponent_moves = len(get_legal_moves(board, opponent))
+    score += 3 * (player_moves - opponent_moves)
+
     return score
+
 
 def get_legal_moves(board, player):
     opponent = get_opponent(player)
@@ -203,7 +216,7 @@ def handle_command(command):
     player = command["player"]
     
     # Reduce depth if too many moves to ensure speed
-    depth = 5 if len(possible_moves) > 8 else 
+    depth = 5 if len(possible_moves) > 16 else 6 if len(possible_moves) > 8 else 7
     
     _, best = minimax(board, depth=depth, maximizing=True, player=player, legal_moves=possible_moves,
                       alpha=float('-inf'), beta=float('inf'))
