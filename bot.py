@@ -125,42 +125,60 @@ def minimax(board, depth, maximizing, player, legal_moves, alpha, beta):
             if beta <= alpha:
                 break
         return max_eval, best_move
+def minimax(board, depth, maximizing, player, legal_moves, alpha, beta):
+    if depth == 0 or not legal_moves:
+        return evaluate_board(board, player), None
+
+    best_move = legal_moves[0]
+    if maximizing:
+        max_eval = float('-inf')
+        for move in legal_moves:
+            new_board = simulate_move(board, int(move), player)
+            opponent_moves = get_legal_moves(new_board, get_opponent(player))
+            eval_score, _ = minimax(new_board, depth - 1, False, player, opponent_moves, alpha, beta)
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = move
+            alpha = max(alpha, eval_score)
+            if beta <= alpha:
+                break
+        return max_eval, best_move
     else:
-        # Don't assume opponent plays optimally - simulate more realistic opponent behavior
+        # For opponent moves, only evaluate top 3 options to save time
+        if len(legal_moves) > 6:
+            # Quick evaluation to filter moves
+            quick_scores = []
+            for move in legal_moves:
+                new_board = simulate_move(board, int(move), get_opponent(player))
+                quick_score = evaluate_board(new_board, get_opponent(player))
+                quick_scores.append((quick_score, move))
+            quick_scores.sort(reverse=True)  # Best for opponent first
+            legal_moves = [move for _, move in quick_scores[:6]]  # Keep top 6
+        
+        # Evaluate filtered moves properly
         move_scores = []
         for move in legal_moves:
-            new_board = simulate_move(board.copy(), int(move), get_opponent(player))
+            new_board = simulate_move(board, int(move), get_opponent(player))
             my_moves = get_legal_moves(new_board, player)
             eval_score, _ = minimax(new_board, depth - 1, True, player, my_moves, alpha, beta)
             move_scores.append((eval_score, move))
+            # Early termination for speed
+            beta = min(beta, eval_score)
+            if beta <= alpha:
+                break
         
-        # Sort moves by how good they are for the opponent (worst for us)
-        move_scores.sort()
+        move_scores.sort()  # Best opponent moves first (lowest scores for us)
         
-        # Instead of always picking the best opponent move, use weighted selection
-        # Give higher probability to better opponent moves, but allow suboptimal choices
-        if len(move_scores) == 1:
+        # Opponent chooses: 70% best move, 20% 2nd best, 10% 3rd best
+        rand_val = random.random()
+        if rand_val < 0.7 or len(move_scores) == 1:
             return move_scores[0]
-        
-        # Create probability weights: best moves get higher weight, but others still possible
-        weights = []
-        for i in range(len(move_scores)):
-            # Exponential decay - best moves much more likely, but not guaranteed
-            weight = 2 ** (len(move_scores) - i - 1)
-            weights.append(weight)
-        
-        # Weighted random selection
-        total_weight = sum(weights)
-        rand_val = random.random() * total_weight
-        cumulative = 0
-        
-        for i, (score, move) in enumerate(move_scores):
-            cumulative += weights[i]
-            if rand_val <= cumulative:
-                return score, move
-        
-        # Fallback to best move if something goes wrong
-        return move_scores[0]
+        elif rand_val < 0.9 and len(move_scores) >= 2:
+            return move_scores[1]
+        elif len(move_scores) >= 3:
+            return move_scores[2]
+        else:
+            return move_scores[0]
 
 def handle_command(command):
     possible = command.get("possibleMoves", "").strip()
@@ -169,7 +187,11 @@ def handle_command(command):
     possible_moves = possible.split(",")
     board = parse_board(command["boardStatus"])
     player = command["player"]
-    _, best = minimax(board, depth=6, maximizing=True, player=player, legal_moves=possible_moves,
+    
+    # Reduce depth if too many moves to ensure speed
+    depth = 3 if len(possible_moves) > 8 else 4
+    
+    _, best = minimax(board, depth=depth, maximizing=True, player=player, legal_moves=possible_moves,
                       alpha=float('-inf'), beta=float('inf'))
     return str(best) if best else "-1"
 
