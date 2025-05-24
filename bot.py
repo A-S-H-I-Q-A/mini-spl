@@ -70,17 +70,129 @@ def simulate_move(board, move, player):
 def evaluate_board(board, player):
     opponent = get_opponent(player)
     corners = [0, 7, 56, 63]
+    edges = [1, 2, 3, 4, 5, 6,      # top edge
+             8, 16, 24, 32, 40, 48,  # left edge  
+             15, 23, 31, 39, 47, 55, # right edge
+             57, 58, 59, 60, 61, 62] # bottom edge
+    
+    # Count empty squares to determine game phase
+    empty_count = board.count('E')
+    is_endgame = empty_count <= 16  # Last quarter of game
+    is_midgame = empty_count <= 32  # Last half of game
+    
     score = 0
+    player_pieces = 0
+    opponent_pieces = 0
 
     for i in range(64):
         if board[i] == player:
-            score += 1
+            player_pieces += 1
+            base_score = 1
+            
+            # Corner control - extremely valuable
             if i in corners:
-                score += 25
+                if is_endgame:
+                    base_score += 50  # Even more valuable in endgame
+                elif is_midgame:
+                    base_score += 35
+                else:
+                    base_score += 25
+            
+            # Edge control - valuable for stability and corner access
+            elif i in edges:
+                if is_endgame:
+                    base_score += 15  # Much more valuable in endgame
+                elif is_midgame:
+                    base_score += 8
+                else:
+                    base_score += 3
+            
+            # Adjacent to corners can be dangerous early, but good if corner is controlled
+            elif i in [1, 8, 9]:  # adjacent to corner 0
+                if board[0] == player:
+                    base_score += 5  # Good if we control the corner
+                elif is_endgame:
+                    base_score += 2  # Less risky in endgame
+                else:
+                    base_score -= 3  # Risky early game
+            elif i in [6, 14, 15]:  # adjacent to corner 7
+                if board[7] == player:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            elif i in [48, 49, 57]:  # adjacent to corner 56
+                if board[56] == player:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            elif i in [54, 55, 62]:  # adjacent to corner 63
+                if board[63] == player:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            
+            score += base_score
+            
         elif board[i] == opponent:
-            score -= 1
+            opponent_pieces += 1
+            base_score = 1
+            
+            # Same logic for opponent (subtract their advantages)
             if i in corners:
-                score -= 25
+                if is_endgame:
+                    base_score += 50
+                elif is_midgame:
+                    base_score += 35
+                else:
+                    base_score += 25
+            elif i in edges:
+                if is_endgame:
+                    base_score += 15
+                elif is_midgame:
+                    base_score += 8
+                else:
+                    base_score += 3
+            elif i in [1, 8, 9]:
+                if board[0] == opponent:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            elif i in [6, 14, 15]:
+                if board[7] == opponent:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            elif i in [48, 49, 57]:
+                if board[56] == opponent:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            elif i in [54, 55, 62]:
+                if board[63] == opponent:
+                    base_score += 5
+                elif is_endgame:
+                    base_score += 2
+                else:
+                    base_score -= 3
+            
+            score -= base_score
+
+    # Endgame bonus: prioritize piece count when few squares left
+    if is_endgame:
+        score += (player_pieces - opponent_pieces) * 3
+    
     return score
 
 def get_legal_moves(board, player):
