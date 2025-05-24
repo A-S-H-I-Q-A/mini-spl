@@ -89,49 +89,49 @@ def evaluate_board(board, player):
             player_pieces += 1
             base_score = 1
             
-            # Corner control - valuable but not overwhelming
+            # Corner control - very high priority
             if i in corners:
                 if is_endgame:
-                    base_score += 20  # Reduced from 50
+                    base_score += 40  # Increased from 20
                 elif is_midgame:
-                    base_score += 15  # Reduced from 35
+                    base_score += 30  # Increased from 15
                 else:
-                    base_score += 12  # Reduced from 25
+                    base_score += 20  # Increased from 12
             
             # Edge control - moderate bonus
             elif i in edges:
                 if is_endgame:
-                    base_score += 6   # Reduced from 15
+                    base_score += 8   # Slightly increased from 6
                 elif is_midgame:
-                    base_score += 4   # Reduced from 8
+                    base_score += 5   # Slightly increased from 4
                 else:
-                    base_score += 2   # Reduced from 3
+                    base_score += 3   # Increased from 2
             
-            # Adjacent to corners - less penalty/bonus
+            # Adjacent to corners
             elif i in [1, 8, 9]:  # adjacent to corner 0
                 if board[0] == player:
-                    base_score += 3  # Reduced from 5
+                    base_score += 4  # Increased from 3
                 elif is_endgame:
-                    base_score += 1  # Reduced from 2
+                    base_score += 1
                 else:
-                    base_score -= 2  # Reduced penalty from -3
+                    base_score -= 2
             elif i in [6, 14, 15]:  # adjacent to corner 7
                 if board[7] == player:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
                     base_score -= 2
             elif i in [48, 49, 57]:  # adjacent to corner 56
                 if board[56] == player:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
                     base_score -= 2
             elif i in [54, 55, 62]:  # adjacent to corner 63
                 if board[63] == player:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
@@ -146,42 +146,42 @@ def evaluate_board(board, player):
             # Same logic for opponent (subtract their advantages)
             if i in corners:
                 if is_endgame:
-                    base_score += 20
+                    base_score += 40
                 elif is_midgame:
-                    base_score += 15
+                    base_score += 30
                 else:
-                    base_score += 12
+                    base_score += 20
             elif i in edges:
                 if is_endgame:
-                    base_score += 6
+                    base_score += 8
                 elif is_midgame:
-                    base_score += 4
+                    base_score += 5
                 else:
-                    base_score += 2
+                    base_score += 3
             elif i in [1, 8, 9]:
                 if board[0] == opponent:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
                     base_score -= 2
             elif i in [6, 14, 15]:
                 if board[7] == opponent:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
                     base_score -= 2
             elif i in [48, 49, 57]:
                 if board[56] == opponent:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
                     base_score -= 2
             elif i in [54, 55, 62]:
                 if board[63] == opponent:
-                    base_score += 3
+                    base_score += 4
                 elif is_endgame:
                     base_score += 1
                 else:
@@ -191,7 +191,7 @@ def evaluate_board(board, player):
 
     # Endgame bonus: prioritize piece count when few squares left
     if is_endgame:
-        score += (player_pieces - opponent_pieces) * 2  # Reduced from 3
+        score += (player_pieces - opponent_pieces) * 2
     
     return score
 
